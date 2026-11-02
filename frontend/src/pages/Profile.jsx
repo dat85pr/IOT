@@ -1,0 +1,45 @@
+import React from 'react';
+import { ExternalLink } from 'lucide-react';
+import avatarImg from '../assets/avatar.png';
+
+const details = [
+  ['Full name', 'Hoàng Đinh Đạt'],
+  ['Student ID', 'B23DCCN129'],
+  ['Email', 'dathoangdinh11@gmail.com'],
+  ['Github', 'https://github.com/dat85pr'],
+  ['Figma', 'https://www.figma.com/design/Yf8shgPaInXJkeam3KwsCd/Iot---UD?node-id=0-1&p=f&t=yEbXAfUbDogDtNBs-0'],
+  ['Postman', ''],
+  ['Report', ''],
+];
+
+export default function Profile() {
+  return (
+    <div className="profile-card">
+      <img src={avatarImg} alt="Hoàng Đinh Đạt" className="portrait" style={{ objectFit: 'cover', display: 'block' }} />
+      <div className="profile-rows">
+        {details.map(([label, value], index) => {
+          const isLink = Boolean(value && (value.startsWith('http://') || value.startsWith('https://')));
+          return (
+            <div className={index % 2 === 0 ? 'shade' : ''} key={label}>
+              <b>{label}</b>
+              {isLink ? (
+                <a
+                  href={value}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="profile-open-btn"
+                  title={`Open ${label}`}
+                >
+                  <span>Open</span>
+                  <ExternalLink size={12} />
+                </a>
+              ) : (
+                <strong>{value || '—'}</strong>
+              )}
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
