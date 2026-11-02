@@ -10,19 +10,31 @@ export function createMemoryStore(database) {
   const publish = event => listeners.forEach(listener => listener(event));
 
   return {
-    addSensor(reading) {
+    async addSensor(reading) {
       sensors.push(reading);
       if (sensors.length > MAX_ITEMS) sensors.shift();
-      void database?.saveSensor(reading).catch(error => console.error('[DB] Sensor save failed:', error.message));
+      if (database) {
+        try {
+          await database.saveSensor(reading);
+        } catch (error) {
+          console.error('[DB] Sensor save failed:', error.message);
+        }
+      }
       publish({ type: 'sensor', data: reading });
     },
     async getSensors() {
       return database ? database.listSensors(MAX_ITEMS) : [...sensors].reverse();
     },
-    addAction(action) {
+    async addAction(action) {
       actions.unshift(action);
       if (actions.length > MAX_ITEMS) actions.pop();
-      void database?.saveAction(action).catch(error => console.error('[DB] Action save failed:', error.message));
+      if (database) {
+        try {
+          action.id = await database.saveAction(action);
+        } catch (error) {
+          console.error('[DB] Action save failed:', error.message);
+        }
+      }
       publish({ type: 'action', data: action });
     },
     async getActions() {

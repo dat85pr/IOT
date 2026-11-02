@@ -31,7 +31,7 @@ export function createMqttService({ config, store }) {
     }
 
     if (topic === config.mqtt.sensorTopic) {
-      store.addSensor({ ...data, receivedAt: new Date().toISOString() });
+      void store.addSensor({ ...data, receivedAt: new Date().toISOString() });
     } else if (topic === config.mqtt.responseTopic) {
       const response = { ...data, receivedAt: new Date().toISOString() };
       store.setLatestResponse(response);

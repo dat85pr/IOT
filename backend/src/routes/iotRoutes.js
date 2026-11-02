@@ -53,14 +53,14 @@ export function createIotRouter({ store, mqttService }) {
       time: new Date().toISOString(),
       actor: 'Admin',
     };
-    store.addAction(action);
+    await store.addAction(action);
 
     try {
       await mqttService.publishControl(command);
       response.status(202).json(action);
     } catch (error) {
       const failedAction = { ...action, status: 'Failed' };
-      store.addAction(failedAction);
+      await store.addAction(failedAction);
       response.status(503).json({ error: 'Unable to publish MQTT command' });
     }
   });

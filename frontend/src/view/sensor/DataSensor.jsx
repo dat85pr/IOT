@@ -9,11 +9,11 @@ const PAGE_SIZE_OPTIONS = ['5', '10', '20'];
 
 function toSensorRows(item, id) {
   const time = new Date(item.receivedAt).toLocaleString('en-GB');
-  const sequence = String(id).replace(/\D/g, '').padStart(3, '0');
+  const sequence = String(id).padStart(4, '0');
   return [
-    [`T${sequence}`, 'Temperature', `${item.temp} °C`, time],
-    [`H${sequence}`, 'Humidity', `${item.hum} %`, time],
-    [`L${sequence}`, 'Light', `${item.light} nits`, time],
+    [item.temperatureId || `T${sequence}`, 'Temperature', `${item.temp} °C`, time],
+    [item.humidityId || `H${sequence}`, 'Humidity', `${item.hum} %`, time],
+    [item.lightId || `L${sequence}`, 'Light', `${item.light} nits`, time],
   ];
 }
 
@@ -27,11 +27,11 @@ export default function DataSensor() {
   const [error, setError] = useState('');
   useEffect(() => {
     getSensors()
-      .then(({ items }) => setSensorRows(items.flatMap((item, index) => toSensorRows(item, item.id || items.length - index))))
+      .then(({ items }) => setSensorRows(items.flatMap((item, index) => toSensorRows(item, items.length - index - 1))))
       .catch(() => setError('Unable to load sensor data from backend.'));
     const stream = openEventStream((type, data) => {
       if (type === 'sensor') {
-        setSensorRows(rows => [...toSensorRows(data, data.id || Date.now()), ...rows]);
+        setSensorRows(rows => [...rows, ...toSensorRows(data, rows.length / 3)]);
       }
     });
     stream.onerror = () => setError('Unable to receive live sensor data.');

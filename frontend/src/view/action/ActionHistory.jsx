@@ -20,6 +20,10 @@ function toActionRow(item) {
   ];
 }
 
+function toActionRows(items) {
+  return items.map(toActionRow);
+}
+
 export default function ActionHistory() {
   const [query, setQuery] = useState('');
   const [device, setDevice] = useState(actionChoices.devices[0]);
@@ -32,14 +36,16 @@ export default function ActionHistory() {
   const [error, setError] = useState('');
   useEffect(() => {
     getActions()
-      .then(({ items }) => setActionRows(items.map(toActionRow)))
+      .then(({ items }) => setActionRows(toActionRows(items)))
       .catch(() => setError('Unable to load action history from backend.'));
     const stream = openEventStream((type, data) => {
       if (type === 'action') {
-        setActionRows(rows => [toActionRow(data), ...rows.filter(row => row[0] !== data.id)]);
+        getActions()
+          .then(({ items }) => setActionRows(toActionRows(items)))
+          .catch(() => setError('Unable to refresh action history.'));
       }
       if (type === 'response') {
-        getActions().then(({ items }) => setActionRows(items.map(toActionRow))).catch(() => {});
+        getActions().then(({ items }) => setActionRows(toActionRows(items))).catch(() => {});
       }
     });
     stream.onerror = () => setError('Unable to receive live action history.');

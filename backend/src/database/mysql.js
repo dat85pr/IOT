@@ -21,10 +21,23 @@ export function createDatabase(config) {
           humidity DECIMAL(8,2) NOT NULL,
           light INT NOT NULL,
           received_at DATETIME(3) NOT NULL,
+          temperature_id CHAR(5) NULL,
+          humidity_id CHAR(5) NULL,
+          light_id CHAR(5) NULL,
           PRIMARY KEY (id),
           INDEX idx_sensor_received_at (received_at)
         )
       `);
+      const [sensorColumns] = await pool.query(
+        `SELECT COLUMN_NAME FROM information_schema.COLUMNS
+         WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'sensor_readings'`,
+      );
+      const existingColumns = new Set(sensorColumns.map(column => column.COLUMN_NAME));
+      for (const column of ['temperature_id', 'humidity_id', 'light_id']) {
+        if (!existingColumns.has(column)) {
+          await pool.query(`ALTER TABLE sensor_readings ADD COLUMN ${column} CHAR(5) NULL`);
+        }
+      }
       await pool.query(`
         CREATE TABLE IF NOT EXISTS device_actions (
           id VARCHAR(64) NOT NULL,
@@ -45,25 +58,64 @@ export function createDatabase(config) {
         )
       `);
       await pool.query("UPDATE device_actions SET actor = 'Admin' WHERE actor IS NULL OR actor = '' OR actor = 'dashboard'");
+      await pool.query(`
+        UPDATE device_actions ranked
+        JOIN (
+          SELECT id, LPAD(ROW_NUMBER() OVER (ORDER BY created_at, id) - 1, 4, '0') AS new_id
+          FROM device_actions
+        ) ordered ON ordered.id = ranked.id
+        SET ranked.id = ordered.new_id
+      `);
+      await pool.query(`
+        UPDATE sensor_readings sr
+        JOIN (
+          SELECT id, ROW_NUMBER() OVER (ORDER BY received_at, id) - 1 AS seq_num
+          FROM sensor_readings
+        ) AS ordered ON ordered.id = sr.id
+        SET sr.temperature_id = CONCAT('T', LPAD(ordered.seq_num, 4, '0')),
+            sr.humidity_id = CONCAT('H', LPAD(ordered.seq_num, 4, '0')),
+            sr.light_id = CONCAT('L', LPAD(ordered.seq_num, 4, '0'))
+      `);
     },
     async saveSensor(reading) {
+      const [[sequence]] = await pool.query(
+        "SELECT COALESCE(MAX(CAST(SUBSTRING(temperature_id, 2) AS UNSIGNED)), -1) + 1 AS next_id FROM sensor_readings",
+      );
       await pool.execute(
-        'INSERT INTO sensor_readings (temperature, humidity, light, received_at) VALUES (?, ?, ?, ?)',
-        [reading.temp, reading.hum, reading.light, new Date(reading.receivedAt)],
+        `INSERT INTO sensor_readings
+          (temperature, humidity, light, received_at, temperature_id, humidity_id, light_id)
+         VALUES (?, ?, ?, ?, ?, ?, ?)`,
+        [
+          reading.temp,
+          reading.hum,
+          reading.light,
+          new Date(reading.receivedAt),
+          `T${String(sequence.next_id).padStart(4, '0')}`,
+          `H${String(sequence.next_id).padStart(4, '0')}`,
+          `L${String(sequence.next_id).padStart(4, '0')}`,
+        ],
       );
     },
     async listSensors(limit) {
       const [rows] = await pool.execute(
-        'SELECT id, temperature AS temp, humidity AS hum, light, received_at AS receivedAt FROM sensor_readings ORDER BY received_at DESC LIMIT ?',
+        `SELECT
+          id, temperature AS temp, humidity AS hum, light,
+          temperature_id AS temperatureId, humidity_id AS humidityId, light_id AS lightId,
+          received_at AS receivedAt
+        FROM sensor_readings ORDER BY received_at DESC LIMIT ?`,
         [limit],
       );
       return rows;
     },
     async saveAction(action) {
+      const [[sequence]] = await pool.query(
+        "SELECT LPAD(COALESCE(MAX(CAST(id AS UNSIGNED)), -1) + 1, 4, '0') AS next_id FROM device_actions",
+      );
       await pool.execute(
         'INSERT INTO device_actions (id, command, status, actor, created_at) VALUES (?, ?, ?, ?, ?) ON DUPLICATE KEY UPDATE status = VALUES(status)',
-        [action.id, action.command, action.status, action.actor || 'Admin', new Date(action.time)],
+        [sequence.next_id, action.command, action.status, action.actor || 'Admin', new Date(action.time)],
       );
+      return sequence.next_id;
     },
     async updateActionStatus(id, status) {
       await pool.execute('UPDATE device_actions SET status = ? WHERE id = ?', [status, id]);
