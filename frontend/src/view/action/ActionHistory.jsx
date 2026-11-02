@@ -8,15 +8,15 @@ import SelectMenu from '../common/SelectMenu.jsx';
 const PAGE_SIZE_OPTIONS = ['5', '10', '20'];
 
 function toActionRow(item) {
-  const device = item.command.startsWith('LED2') ? 'LED Control 2' : 'LED Control 1';
-  const action = item.command.endsWith('ON') ? 'TURN ON' : 'TURN OFF';
+  const device = item.device || (item.command.startsWith('LED2') ? 'LED Control 2' : 'LED Control 1');
+  const action = item.action || (item.command.endsWith('ON') ? 'TURN ON' : 'TURN OFF');
   return [
     item.id,
     device,
     action,
     item.status,
     new Date(item.time).toLocaleString('en-GB'),
-    'Admin',
+    item.actor || 'Admin',
   ];
 }
 
@@ -45,7 +45,7 @@ export default function ActionHistory() {
     stream.onerror = () => setError('Unable to receive live action history.');
     return () => stream.close();
   }, []);
-  const filteredRows = useMemo(() => filterActionRows(actionRows, applied), [applied]);
+  const filteredRows = useMemo(() => filterActionRows(actionRows, applied), [actionRows, applied]);
   const maxPage = Math.max(1, Math.ceil(filteredRows.length / pageSize));
   const currentPage = Math.min(page, maxPage);
   const currentRows = filteredRows.slice((currentPage - 1) * pageSize, currentPage * pageSize);

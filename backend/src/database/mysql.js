@@ -95,7 +95,17 @@ export function createDatabase(config) {
     },
     async listActions() {
       const [rows] = await pool.execute(
-        'SELECT id, command, status, actor, created_at AS time FROM device_actions ORDER BY created_at DESC LIMIT 100',
+        `SELECT
+          id,
+          command,
+          CASE WHEN command LIKE 'LED2_%' THEN 'LED Control 2' ELSE 'LED Control 1' END AS device,
+          CASE WHEN command LIKE '%_ON' THEN 'TURN ON' ELSE 'TURN OFF' END AS action,
+          status,
+          COALESCE(NULLIF(actor, ''), 'Admin') AS actor,
+          created_at AS time
+        FROM device_actions
+        ORDER BY created_at DESC
+        LIMIT 100`,
       );
       return rows;
     },
