@@ -8,7 +8,7 @@ const details = [
   ['Email', 'dathoangdinh11@gmail.com'],
   ['Github', 'https://github.com/dat85pr/IOT'],
   ['Figma', 'https://www.figma.com/design/Yf8shgPaInXJkeam3KwsCd/Iot---UD?node-id=0-1&p=f&t=yEbXAfUbDogDtNBs-0'],
-  ['Postman', ''],
+  ['Postman', 'https://sl1nk.com/dpalbp0'],
   ['Report', 'https://docs.google.com/document/d/1ytGKV_L8s05z3xLE--hKPV5NpjNWBcUy1QzoRIYBftQ/edit?tab=t.6kjxpc2bf4un#heading=h.9bit7t21aew7'],
 ];
 
