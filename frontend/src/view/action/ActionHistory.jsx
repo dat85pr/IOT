@@ -2,6 +2,7 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { Search } from 'lucide-react';
 import { getActions, openEventStream } from '../../api/iotApi.js';
 import { actionChoices, filterActionRows } from '../../service/actionService.js';
+import CopyableTime from '../common/CopyableTime.jsx';
 import Pager from '../common/Pager.jsx';
 import SelectMenu from '../common/SelectMenu.jsx';
 
@@ -80,7 +81,7 @@ export default function ActionHistory() {
           <table>
             <thead><tr><th>ID</th><th>Device</th><th>Action</th><th>Status</th><th>Time</th><th>Actor</th></tr></thead>
             <tbody>
-              {currentRows.length > 0 ? currentRows.map(row => <tr key={row[0]}><td><b>{row[0]}</b></td><td>{row[1]}</td><td><b>{row[2]}</b></td><td><b className={row[3] === 'Failed' ? 'failed' : ''}>{row[3]}</b></td><td>{row[4]}</td><td>{row[5]}</td></tr>) : <tr><td colSpan={6} style={{ textAlign: 'center', color: '#999', padding: '20px 0' }}>No actions found</td></tr>}
+              {currentRows.length > 0 ? currentRows.map(row => <tr key={row[0]}><td><b>{row[0]}</b></td><td>{row[1]}</td><td><b>{row[2]}</b></td><td><b className={row[3] === 'Failed' ? 'failed' : ''}>{row[3]}</b></td><td><CopyableTime value={row[4]} /></td><td>{row[5]}</td></tr>) : <tr><td colSpan={6} style={{ textAlign: 'center', color: '#999', padding: '20px 0' }}>No actions found</td></tr>}
             </tbody>
           </table>
         </div>
