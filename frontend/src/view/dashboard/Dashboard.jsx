@@ -9,10 +9,37 @@ function MiniChart({ title, value, unit, color, logs, field, Icon }) {
   const coords = logs.map((item, i) => `${logs.length < 2 ? 50 : 5 + i * 90 / (logs.length - 1)},${item[`${field}Y`] || 120}`).join(' ');
   const ticks = Array.from({ length: 5 }, (_, tick) => logs.length ? logs[Math.round(tick * (logs.length - 1) / 4)].time : '--:--');
   return <section className={`mini-chart ${color}`}><header><b><i />{title}</b><span>{unit}</span></header><div className="mini-chart-value"><Icon size={15} />{value}</div><svg viewBox="0 0 100 150" preserveAspectRatio="none" onMouseLeave={() => setHovered(null)}>
+    <g className="mini-grid" aria-hidden="true">
+      {[55, 78, 101, 124].map(y => <line key={y} x1="5" x2="95" y1={y} y2={y} />)}
+    </g>
     <polyline points={coords} />
-    {logs.map((item, i) => { const x = logs.length < 2 ? 50 : 5 + i * 90 / (logs.length - 1); const y = item[`${field}Y`] || 120; return <g key={`${item.fullTime}-${i}`}><circle cx={x} cy={y} r={hovered === i ? 2.2 : 1.5} /><rect x={x - 3.5} y="25" width="7" height="100" fill="transparent" onMouseEnter={() => setHovered(i)} /></g>; })}
+    {logs.map((item, i) => {
+      const x = logs.length < 2 ? 50 : 5 + i * 90 / (logs.length - 1);
+      const y = item[`${field}Y`] || 120;
+      return <g key={`${item.fullTime}-${i}`}>
+        {hovered === i && <line className="hover-guide" x1={x} x2={x} y1="55" y2="145" />}
+        <circle cx={x} cy={y} r={hovered === i ? 3.2 : 2.1} />
+        <rect
+          x={Math.max(1, x - 5)}
+          y="45"
+          width="10"
+          height="100"
+          fill="transparent"
+          onMouseEnter={() => setHovered(i)}
+          onMouseMove={() => setHovered(i)}
+          onFocus={() => setHovered(i)}
+          onBlur={() => setHovered(null)}
+          onTouchStart={() => setHovered(i)}
+          tabIndex="0"
+          aria-label={`${title}: ${item[field]} at ${item.fullTime}`}
+        />
+      </g>;
+    })}
     </svg><div className="chart-times">{ticks.map((time, index) => <span key={`${index}-${time}`}>{time}</span>)}</div>
-    {hovered !== null && logs[hovered] && <div className="chart-tooltip"><b>{logs[hovered].fullTime}</b><span>{title}: {logs[hovered][field]}</span></div>}
+    {hovered !== null && logs[hovered] && <div
+      className="chart-tooltip"
+      style={{ left: `${logs.length < 2 ? 50 : 10 + (hovered * 80 / Math.max(1, logs.length - 1))}%` }}
+    ><b>{logs[hovered].fullTime}</b><span>{title}: {logs[hovered][field]}</span></div>}
     </section>;
 }
 
@@ -49,7 +76,7 @@ export default function Dashboard() {
     {connectionError && <p role="alert" className="connection-error">Backend/MQTT connection unavailable.</p>}
     <header className="dashboard-heading"><div><h1>Sensor Overview</h1><p>Monitor temperature, humidity, light and CO₂</p></div><span>Today · 09:00 – 09:20</span></header>
     <div className="chart-grid">{charts.map(([title, value, unit, color, field, Icon]) => <MiniChart key={field} {...{ title, value, unit, color, logs, field, Icon }} />)}</div>
-    <div className="dashboard-sections"><section><div className="section-heading"><h2>Latest values</h2><span>{latest.time}</span></div><div className="latest-grid">{charts.map(([title, value, unit, color, field]) => <div className={`latest-card ${color}`} key={field}><span><i />{title}</span><b>{value} <small>{unit}</small></b>{field === 'co2' && <em>Simulated value</em>}</div>)}</div></section>
+    <div className="dashboard-sections"><section><div className="section-heading"><h2>Latest values</h2><span>{latest.time}</span></div><div className="latest-grid">{charts.map(([title, value, unit, color, field]) => <div className={`latest-card ${color}`} key={field}><span><i />{title}</span><b>{value} <small>{unit}</small></b>{field === 'co2' }</div>)}</div></section>
       <section><div className="section-heading"><h2>LED control</h2><span>4 independent switches</span></div><div className="led-grid">{led.map((active, index) => <div className="led-card" key={index}><div><span className={active ? 'dot active' : 'dot'} /><b>LED {index + 1}</b></div><p className={active ? 'state-on' : ''}>{active ? 'ON · On' : 'OFF · Off'}</p><button aria-label={`Toggle LED ${index + 1}`} aria-pressed={active} disabled={pendingLed !== null} className={active ? 'on' : ''} onClick={() => toggleLed(index)}><i /></button></div>)}</div></section></div>
   </div>;
 }

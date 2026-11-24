@@ -31,11 +31,16 @@ export const initialSensorLogs = [
   { time: '09:00:20', fullTime: '13/10/2024 09:00:20', temp: '30.8°C', hum: '76%', light: '330 nits', tempY: 94, humY: 94, lightY: 139 },
 ];
 
+function finiteNumber(value, fallback) {
+  const number = Number(value);
+  return Number.isFinite(number) ? number : fallback;
+}
+
 export function normalizeSensorReading(reading) {
-  const temp = Number(reading.temp);
-  const hum = Number(reading.hum);
-  const light = Number(reading.light);
-  const co2 = Number(reading.co2);
+  const temp = finiteNumber(reading.temp ?? reading.temperature, 0);
+  const hum = finiteNumber(reading.hum ?? reading.humidity, 0);
+  const light = finiteNumber(reading.light ?? reading.lux ?? reading.illuminance, 0);
+  const co2 = finiteNumber(reading.co2, 450);
   const receivedAt = reading.receivedAt ? new Date(reading.receivedAt) : new Date();
 
   return {
