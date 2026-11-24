@@ -263,13 +263,13 @@ export default function Dashboard() {
             {charts.map(([
               title,
               value,
-              unit,
+              _unit,
               color,
               field,
             ]) => (
               <div className={`latest-card ${color}`} key={field}>
                 <span><i />{title}</span>
-                <b>{value} <small>{unit}</small></b>
+                <b>{value}</b>
                 {field === 'co2'}
               </div>
             ))}
