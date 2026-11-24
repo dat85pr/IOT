@@ -5,15 +5,17 @@ import { createMemoryStore } from './store/memoryStore.js';
 import { createDatabase } from './database/mysql.js';
 import { createMqttService } from './mqtt/mqttService.js';
 import { createIotRouter } from './routes/iotRoutes.js';
+import { createAuth } from './auth.js';
 
 const app = express();
 const database = createDatabase(config.mysql);
 const store = createMemoryStore(database);
 const mqttService = createMqttService({ config, store });
+const auth = createAuth(config.auth);
 
 app.use(cors({ origin: config.frontendOrigin }));
 app.use(express.json());
-app.use('/api', createIotRouter({ store, mqttService }));
+app.use('/api', createIotRouter({ store, mqttService, auth }));
 
 const server = await (async () => {
   try {

@@ -35,6 +35,7 @@ export function normalizeSensorReading(reading) {
   const temp = Number(reading.temp);
   const hum = Number(reading.hum);
   const light = Number(reading.light);
+  const co2 = Number(reading.co2);
   const receivedAt = reading.receivedAt ? new Date(reading.receivedAt) : new Date();
 
   return {
@@ -43,9 +44,11 @@ export function normalizeSensorReading(reading) {
     temp: `${temp.toFixed(1)}°C`,
     hum: `${hum.toFixed(1)}%`,
     light: `${light} nits`,
+    co2: `${Math.round(co2)} ppm`,
     tempY: toChartY(temp, 0, 50),
     humY: toChartY(hum, 0, 100),
     lightY: toChartY(light, 0, 1024),
+    co2Y: toChartY(co2, 400, 2000),
   };
 }
 

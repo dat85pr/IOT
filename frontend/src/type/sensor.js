@@ -15,4 +15,5 @@
  * }} SensorLog
  */
 
-export const SENSOR_TYPES = ['All sensors', 'Temperature', 'Humidity', 'Light', 'Time'];
+export const SENSOR_TYPES = ['All sensors', 'Temperature', 'Humidity', 'Light', 'CO₂', 'Time'];
+

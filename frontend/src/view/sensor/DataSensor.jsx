@@ -15,6 +15,7 @@ function toSensorRows(item, id) {
     [item.temperatureId || `T${sequence}`, 'Temperature', `${item.temp} °C`, time],
     [item.humidityId || `H${sequence}`, 'Humidity', `${item.hum} %`, time],
     [item.lightId || `L${sequence}`, 'Light', `${item.light} nits`, time],
+    [item.co2Id || `C${sequence}`, 'CO₂', `${Math.round(Number(item.co2) || 0)} ppm`, time],
   ];
 }
 

@@ -5,7 +5,7 @@ export function createMemoryStore(database) {
   const actions = [];
   const listeners = new Set();
   let latestResponse = null;
-  let ledState = { led1: 'OFF', led2: 'OFF' };
+  let ledState = { led1: 'OFF', led2: 'OFF', led3: 'OFF', led4: 'OFF' };
 
   const publish = event => listeners.forEach(listener => listener(event));
 
@@ -37,8 +37,9 @@ export function createMemoryStore(database) {
       }
       publish({ type: 'action', data: action });
     },
-    async getActions() {
-      return database ? database.listActions() : [...actions];
+    async getActions(date) {
+      const items = database ? await database.listActions(date) : [...actions];
+      return date ? items.filter(item => item.time?.slice(0, 10) === date) : items;
     },
     resolveLatestAction(status) {
       const action = actions.find(item => item.status === 'Pending');
@@ -50,10 +51,10 @@ export function createMemoryStore(database) {
     },
     setLatestResponse(response) {
       latestResponse = response;
-      ledState = { led1: response.led1 || 'OFF', led2: response.led2 || 'OFF' };
-      void database?.saveLedState(ledState.led1, ledState.led2)
+      ledState = Object.fromEntries([1, 2, 3, 4].map(id => [`led${id}`, response[`led${id}`] || 'OFF']));
+      void database?.saveLedState(ledState)
         .catch(error => console.error('[DB] LED state save failed:', error.message));
-      void database?.resolvePendingActions(ledState.led1, ledState.led2)
+      void database?.resolvePendingActions(ledState)
         .catch(error => console.error('[DB] Pending action update failed:', error.message));
       publish({ type: 'response', data: response });
     },
@@ -72,3 +73,4 @@ export function createMemoryStore(database) {
     },
   };
 }
+

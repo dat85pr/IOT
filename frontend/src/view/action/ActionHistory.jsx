@@ -9,9 +9,7 @@ import SelectMenu from '../common/SelectMenu.jsx';
 const PAGE_SIZE_OPTIONS = ['5', '10', '20'];
 
 function toActionRow(item) {
-  const device = item.device === 'Đèn 2' || item.device === 'LED Control 2' || item.command?.startsWith('LED2')
-    ? 'LED Control 2'
-    : 'LED Control 1';
+  const device = item.device?.startsWith('LED Control') ? item.device : `LED Control ${item.command?.match(/^LED([1-4])/)?.[1] || 1}`;
   const action = item.action || (item.command.endsWith('ON') ? 'TURN ON' : 'TURN OFF');
   return [
     item.id,
@@ -93,3 +91,4 @@ export default function ActionHistory() {
     </div>
   );
 }
+

@@ -9,6 +9,7 @@ const parseJson = payload => {
 };
 
 export function createMqttService({ config, store }) {
+  let simulatedCo2 = 620;
   const client = mqtt.connect(config.mqtt.url, {
     username: config.mqtt.username,
     password: config.mqtt.password,
@@ -31,7 +32,10 @@ export function createMqttService({ config, store }) {
     }
 
     if (topic === config.mqtt.sensorTopic) {
-      void store.addSensor({ ...data, receivedAt: new Date().toISOString() });
+      // CO₂ has no physical sensor in the supplied Arduino sketch; simulate a
+      // plausible indoor value on the backend so every consumer sees the same reading.
+      simulatedCo2 = Math.max(420, Math.min(1600, simulatedCo2 + Math.round((Math.random() - 0.5) * 90)));
+      void store.addSensor({ ...data, co2: simulatedCo2, receivedAt: new Date().toISOString() });
     } else if (topic === config.mqtt.responseTopic) {
       const response = { ...data, receivedAt: new Date().toISOString() };
       store.setLatestResponse(response);

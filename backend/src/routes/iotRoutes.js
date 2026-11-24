@@ -1,10 +1,19 @@
 import { Router } from 'express';
 
-const allowedCommands = new Set(['LED_ON', 'LED_OFF', 'LED1_ON', 'LED1_OFF', 'LED2_ON', 'LED2_OFF']);
+const allowedCommands = new Set(['LED_ON', 'LED_OFF', ...[1, 2, 3, 4].flatMap(id => [`LED${id}_ON`, `LED${id}_OFF`])]);
 
-export function createIotRouter({ store, mqttService }) {
+export function createIotRouter({ store, mqttService, auth }) {
   const router = Router();
 
+  router.post('/auth/login', (request, response) => {
+    const { username, password } = request.body || {};
+    if (!auth.authenticate(username, password)) {
+      return response.status(401).json({ error: 'Invalid username or password' });
+    }
+    response.json({ token: auth.createToken(), tokenType: 'Bearer', expiresIn: 28800 });
+  });
+
+  router.use(auth.requireAuth);
   router.get('/health', (_request, response) => response.json({ status: 'ok' }));
   router.get('/controls/state', (_request, response) => response.json(store.getLedState()));
 
@@ -17,9 +26,13 @@ export function createIotRouter({ store, mqttService }) {
     }
   });
 
-  router.get('/actions', async (_request, response, next) => {
+  router.get('/actions', async (request, response, next) => {
+    const date = request.query.time || request.query.date;
+    if (date !== undefined && !/^\d{4}-\d{2}-\d{2}$/.test(date)) {
+      return response.status(400).json({ error: 'time must use YYYY-MM-DD format' });
+    }
     try {
-      response.json({ items: await store.getActions() });
+      response.json({ items: await store.getActions(date) });
     } catch (error) {
       next(error);
     }
@@ -67,3 +80,4 @@ export function createIotRouter({ store, mqttService }) {
 
   return router;
 }
+

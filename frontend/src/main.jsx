@@ -1,10 +1,12 @@
 import React, { useEffect, useState } from 'react';
 import { createRoot } from 'react-dom/client';
-import { LayoutDashboard, Database, Clock3, UserRound, Cpu } from 'lucide-react';
+import { LayoutDashboard, Database, Clock3, UserRound, Cpu, LogOut } from 'lucide-react';
 import Dashboard from './view/dashboard/Dashboard.jsx';
 import DataSensor from './view/sensor/DataSensor.jsx';
 import ActionHistory from './view/action/ActionHistory.jsx';
 import Profile from './pages/Profile.jsx';
+import { clearToken, getToken, saveToken } from './auth.js';
+import { login } from './api/iotApi.js';
 import './styles.css';
 import './layout-fixes.css';
 
@@ -23,6 +25,10 @@ function getPageFromHash() {
 }
 
 function App() {
+  const [authenticated, setAuthenticated] = useState(Boolean(getToken()));
+  const [username, setUsername] = useState('');
+  const [password, setPassword] = useState('');
+  const [loginError, setLoginError] = useState('');
   const [page, setPage] = useState(getPageFromHash);
   useEffect(() => {
     if (!window.location.hash) {
@@ -38,6 +44,32 @@ function App() {
     if (nextPage !== page) window.location.hash = `/${nextPage}`;
   };
 
+  const signIn = async event => {
+    event.preventDefault();
+    setLoginError('');
+    try {
+      const result = await login(username, password);
+      saveToken(result.token);
+      setAuthenticated(true);
+    } catch {
+      setLoginError('Tên đăng nhập hoặc mật khẩu không đúng.');
+    }
+  };
+
+  if (!authenticated) {
+    return (
+      <main className="login-page">
+        <form className="login-card" onSubmit={signIn}>
+          <h1>IoT Login</h1>
+          <label>Username<input value={username} onChange={event => setUsername(event.target.value)} autoComplete="username" required /></label>
+          <label>Password<input type="password" value={password} onChange={event => setPassword(event.target.value)} autoComplete="current-password" required /></label>
+          {loginError && <p role="alert" className="connection-error">{loginError}</p>}
+          <button type="submit">Đăng nhập</button>
+        </form>
+      </main>
+    );
+  }
+
   return (
     <div className="shell">
       <aside className="sidebar">
@@ -49,6 +81,9 @@ function App() {
             </button>
           ))}
         </nav>
+        <button type="button" className="sidebar-logout" onClick={() => { clearToken(); setAuthenticated(false); }}>
+          <LogOut size={17} /><span>Đăng xuất</span>
+        </button>
       </aside>
       <main>
         <div hidden={page !== 'dashboard'}><Dashboard /></div>

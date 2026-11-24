@@ -9,6 +9,11 @@ const required = name => {
 export const config = {
   port: Number(process.env.PORT || 3001),
   frontendOrigin: process.env.FRONTEND_ORIGIN || 'http://localhost:5173',
+  auth: {
+    username: required('AUTH_USERNAME'),
+    password: required('AUTH_PASSWORD'),
+    tokenSecret: required('AUTH_TOKEN_SECRET'),
+  },
   mqtt: {
     url: required('MQTT_URL'),
     username: required('MQTT_USERNAME'),

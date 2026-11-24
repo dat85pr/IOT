@@ -5,10 +5,13 @@ const SENSOR_DEFINITIONS = [
   ['Nhiệt độ', 'temperature', '°C', 'T', 'active'],
   ['Độ ẩm', 'humidity', '%', 'H', 'active'],
   ['Ánh sáng', 'light', 'lux', 'L', 'active'],
+  ['CO2', 'co2', 'ppm', 'C', 'active'],
 ];
 const DEVICE_DEFINITIONS = [
   ['Đèn 1', 'LED', 'LED1', 'OFF'],
   ['Đèn 2', 'LED', 'LED2', 'OFF'],
+  ['LED 3', 'LED', 'LED3', 'OFF'],
+  ['LED 4', 'LED', 'LED4', 'OFF'],
 ];
 
 export function createDatabase(config) {
@@ -117,13 +120,14 @@ export function createDatabase(config) {
 
     async saveSensor(reading) {
       const [sensors] = await pool.execute(
-        'SELECT sensor_id, sensor_type FROM sensors WHERE sensor_type IN (?, ?, ?)',
-        ['temperature', 'humidity', 'light'],
+        'SELECT sensor_id, sensor_type FROM sensors WHERE sensor_type IN (?, ?, ?, ?)',
+        ['temperature', 'humidity', 'light', 'co2'],
       );
       const values = {
         temperature: reading.temp,
         humidity: reading.hum,
         light: reading.light,
+        co2: reading.co2,
       };
       for (const sensor of sensors) {
         await pool.execute(
@@ -140,9 +144,11 @@ export function createDatabase(config) {
           MAX(CASE WHEN s.sensor_type = 'temperature' THEN sd.value END) AS temp,
           MAX(CASE WHEN s.sensor_type = 'humidity' THEN sd.value END) AS hum,
           MAX(CASE WHEN s.sensor_type = 'light' THEN sd.value END) AS light,
+          MAX(CASE WHEN s.sensor_type = 'co2' THEN sd.value END) AS co2,
           MAX(CASE WHEN s.sensor_type = 'temperature' THEN CONCAT('T', LPAD(sd.data_id, 4, '0')) END) AS temperatureId,
           MAX(CASE WHEN s.sensor_type = 'humidity' THEN CONCAT('H', LPAD(sd.data_id, 4, '0')) END) AS humidityId,
           MAX(CASE WHEN s.sensor_type = 'light' THEN CONCAT('L', LPAD(sd.data_id, 4, '0')) END) AS lightId,
+          MAX(CASE WHEN s.sensor_type = 'co2' THEN CONCAT('C', LPAD(sd.data_id, 4, '0')) END) AS co2Id,
           sd.created_at AS receivedAt
         FROM sensors_data sd
         JOIN sensors s ON s.sensor_id = sd.sensor_id
@@ -155,7 +161,7 @@ export function createDatabase(config) {
     },
 
     async saveAction(action) {
-      const devicePin = action.command.startsWith('LED2_') ? 'LED2' : 'LED1';
+      const devicePin = action.command.match(/^LED[1-4]/)?.[0] || 'LED1';
       const actionName = action.command.endsWith('_ON') ? 'TURN ON' : 'TURN OFF';
       const [[device]] = await pool.execute('SELECT device_id FROM devices WHERE pin = ?', [devicePin]);
       if (!device) throw new Error(`Unknown device pin: ${devicePin}`);
@@ -185,8 +191,8 @@ export function createDatabase(config) {
       await pool.execute('UPDATE actions_history SET status = ? WHERE action_id = ?', [status, Number(id)]);
     },
 
-    async resolvePendingActions(led1, led2) {
-      for (const [pin, state] of [['LED1', led1], ['LED2', led2]]) {
+    async resolvePendingActions(states) {
+      for (const [pin, state] of [1, 2, 3, 4].map(id => [`LED${id}`, states[`led${id}`]])) {
         await pool.execute(
           `UPDATE actions_history ah
            JOIN devices d ON d.device_id = ah.device_id
@@ -199,8 +205,8 @@ export function createDatabase(config) {
       }
     },
 
-    async saveLedState(led1, led2) {
-      for (const [pin, state] of [['LED1', led1], ['LED2', led2]]) {
+    async saveLedState(states) {
+      for (const [pin, state] of [1, 2, 3, 4].map(id => [`LED${id}`, states[`led${id}`]])) {
         await pool.execute(
           'UPDATE devices SET status = ?, updated_at = NOW(3) WHERE pin = ?',
           [state, pin],
@@ -209,20 +215,20 @@ export function createDatabase(config) {
     },
 
     async getLedState() {
-      const [rows] = await pool.execute('SELECT pin, status FROM devices WHERE pin IN (?, ?)', ['LED1', 'LED2']);
-      return {
-        led1: rows.find(row => row.pin === 'LED1')?.status || 'OFF',
-        led2: rows.find(row => row.pin === 'LED2')?.status || 'OFF',
-      };
+      const [rows] = await pool.execute('SELECT pin, status FROM devices WHERE pin IN (?, ?, ?, ?)', ['LED1', 'LED2', 'LED3', 'LED4']);
+      return Object.fromEntries([1, 2, 3, 4].map(id => [`led${id}`, rows.find(row => row.pin === `LED${id}`)?.status || 'OFF']));
     },
 
-    async listActions() {
+    async listActions(date) {
+      const dateFilter = date
+        ? 'WHERE ah.created_at >= ? AND ah.created_at < DATE_ADD(?, INTERVAL 1 DAY)'
+        : '';
+      const parameters = date ? [date, date] : [];
       const [rows] = await pool.execute(
         `SELECT
           LPAD(ah.action_id, 4, '0') AS id,
-          CASE WHEN d.pin = 'LED2' THEN CONCAT('LED2_', IF(ah.action = 'TURN ON', 'ON', 'OFF'))
-               ELSE CONCAT('LED1_', IF(ah.action = 'TURN ON', 'ON', 'OFF')) END AS command,
-          CASE WHEN d.pin = 'LED2' THEN 'LED Control 2' ELSE 'LED Control 1' END AS device,
+          CONCAT(d.pin, '_', IF(ah.action = 'TURN ON', 'ON', 'OFF')) AS command,
+          CONCAT('LED Control ', SUBSTRING(d.pin, 4)) AS device,
           ah.action,
           ah.status,
           u.fullname AS actor,
@@ -230,8 +236,10 @@ export function createDatabase(config) {
         FROM actions_history ah
         JOIN devices d ON d.device_id = ah.device_id
         JOIN users u ON u.user_id = ah.user_id
+        ${dateFilter}
         ORDER BY ah.created_at DESC
         LIMIT 100`,
+        parameters,
       );
       return rows;
     },
